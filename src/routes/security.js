@@ -5,20 +5,23 @@ const sequelize = require('../database')
 let refreshTokens = []
 
 const generateToken = (user) => {
-  const token = jwt.sign({user: user}, "sdgsdgksfdngsgksd", {expiresIn:'1800s'})
-  const refreshToken = jwt.sign(user, "jsdqngsdnjqsnsqdnvcjlznz63457435645")
-  refreshTokens.push(refreshToken)
+  const token = jwt.sign({user: user}, process.env.TOKEN_SECRET, {expiresIn: process.env.TOKEN_EXPIRE_TIME})
+  const refreshToken = jwt.sign(user, process.env.TOKEN_SECRET)
   return {token, refreshToken}
 }
 
 const verifyToken = (req, res, next) => {
   const bearerHeader = req.headers['authorization']
   if(bearerHeader) {
-    const bearerToken = bearerHeader.split(' ')[1]
-    req.token = bearerToken
-    next()
+    const token = bearerHeader.split(' ')[1]
+    jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+      if (err)
+        return res.status(403).json({message: "Error: invalid token"})
+      req.user = decoded.user
+      next()
+    })
   } else {
-    res.sendStatus(403)
+    return res.status(403).json({message: "Error: a token is required to access this route"})
   }
 }
 
@@ -28,11 +31,11 @@ const getToken = (req,res) => {
     return res.sendStatus(401)
   if(!refreshTokens.includes(refreshToken))
     return res.sendStatus(403)
-  jwt.verify(refreshToken, 'jsdqngsdnjqsnsqdnvcjlznz63457435645', (err, user) => {
+  jwt.verify(refreshToken, process.env.TOKEN_SECRET, (err, user) => {
     if(err) {
       return res.sendStatus(403)
     }
-    const token = jwt.sign({user:user}, "sdgsdgksfdngsgksd", {expiresIn:'1800s'})
+    const token = jwt.sign({user:user}, process.env.TOKEN_SECRET, {expiresIn: process.env.TOKEN_EXPIRE_TIME})
     res.json({token: token})
   }).catch((err) => {
     console.log(err);

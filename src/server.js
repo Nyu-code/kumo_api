@@ -5,9 +5,9 @@ const helmet = require('helmet')
 const cors = require('cors')
 const cookieParser = require('cookie-parser')
 const logger = require('morgan')
-const dotenv = require('dotenv');
+const dotenv = require('dotenv')
 
-dotenv.config();
+dotenv.config()
 const apiRouter = require('./routes')
 
 const app = express()

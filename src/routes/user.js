@@ -7,72 +7,73 @@ const { generateToken } = require('./security')
 
 
 const register = (req, res) => {
-	const saltRounds = 10
-	const user = {
-		username: req.body.username,
-		email: req.body.email,
-		password: req.body.password,
-	}
+  const saltRounds = 10
+  const user = {
+    username: req.body.username,
+    email: req.body.email,
+    password: req.body.password,
+  }
   const pgp_config = {
     type: 'rsa',
     rsaBits: 2048, // RSA key size (defaults to 4096 bits)
     userIDs: [{ name: user.username, email: user.email }], // you can pass multiple user IDs
     passphrase: user.password // protects the private key
   }
-  mkdirp('../rep_User/' + user.username)
-	const hash = bcrypt.hashSync(user.password, saltRounds)
-  openpgp.generateKey(pgp_config).then(({privateKey, publicKey}) => {
-    // console.log(publicKey)
-    // console.log(privateKey)
-    sequelize.query("INSERT INTO users (username, email, password, public_key, private_key) VALUES (?, ?, ?, ?, ?)",{
-      replacements: [user.username, user.email, hash, publicKey, privateKey]
-    }).then(([results, metadata]) => {
-      sequelize.query("SELECT user_id FROM users WHERE email = '" + user.email + "';")
-      .then(([results, metadata]) => {
-        res.json(true);
+  sequelize.query("SELECT user_id FROM users WHERE email = ?", {replacements: [user.email]}).then(([results, metadata]) => {
+    if (results.length != 0)
+      return res.status(400).json({message: "Error, this email address is already used"})
+    mkdirp('../rep_User/' + user.username)
+    const hash = bcrypt.hashSync(user.password, saltRounds)
+    openpgp.generateKey(pgp_config).then(({privateKey, publicKey}) => {
+      sequelize.query("INSERT INTO users (username, email, password, public_key, private_key) VALUES (?, ?, ?, ?, ?)", {
+        replacements: [user.username, user.email, hash, publicKey, privateKey]
+      }).then(([results, metadata]) => {
+        user.id = results;
+        return res.json(user)
       })
     })
   }).catch((err) => {
-    console.log(err);
+    console.log(err)
+    return res.status(400).json({message: err.message})
   })
+  
 }
 
 const login = (req, res) => {
-	const email = req.body.email
-	const empty = ''
-	const password = req.body.password
-
-	sequelize.query("SELECT user_id, username, password FROM users WHERE email = '" + email + "'")
-	.then(([results, metadata]) => {
-		const user = {
-			email: req.body.email,
-		}
-		if(results != empty) {
-			hashedPassword = results[0].password
-			bcrypt.compare(password, hashedPassword, function(err, same){
-				if(err) {
-					res.json(false)
-					return;
-				} else {
-					if (same) {
-						req.session.id_user = results[0].iduser
-						const {token, refreshToken} = generateToken(user)
-						res.json({token: token, refreshToken: refreshToken})
-						return;
-					} else {
-						res.json(false)
-						return;
-					}
-				}
-			})
-		} else {
-			res.json(false)
-			return;
-		}
-	}).catch ((err) => {
-		console.log(err)
-		return res.status(400).json({message: err.message})
-	})
+  const user = {
+    email: req.body.email,
+  }
+  if (!user.email || !req.body.password)
+    return res.status(400).json({message: "Error: need an email and a password to log in"})
+  sequelize.query('SELECT * FROM users WHERE email = ?', {
+    replacements: [user.email]
+  }).then(([results, metadata]) => {
+    if(results.length === 1) {
+      hashedPassword = results[0].password
+      bcrypt.compare(req.body.password, hashedPassword, function(err, same){
+        if(err) {
+          throw new Error(err);
+        } else {
+          if (same) {
+            user.id = results[0].user_id
+            user.username = results[0].username
+            const {token, refreshToken} = generateToken(user)
+            user.token = token
+            user.refreshToken = refreshToken
+            req.session.user = user
+            return res.status(200).json(user)
+          } else {
+            return res.status(400).json({message: "Error: invalid credentials"})
+          }
+        }
+      })
+    } else {
+      return res.status(400).json({message: 'Error: user does not exists'})
+    }
+  }).catch ((err) => {
+    console.log(err)
+    return res.status(400).json({message: err.message})
+  })
 }
 
 const logoutTo = (req,res) => {
