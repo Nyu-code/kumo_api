@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt')
 const openpgp = require('openpgp')
+const mkdirp = require("mkdirp")
 
 const sequelize = require('../database')
 const { generateToken } = require('./security')
@@ -18,6 +19,7 @@ const register = (req, res) => {
     userIDs: [{ name: user.username, email: user.email }], // you can pass multiple user IDs
     passphrase: user.password // protects the private key
   }
+  mkdirp('../rep_User/' + user.username)
 	const hash = bcrypt.hashSync(user.password, saltRounds)
   openpgp.generateKey(pgp_config).then(({privateKey, publicKey}) => {
     // console.log(publicKey)
