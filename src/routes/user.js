@@ -40,7 +40,7 @@ const login = (req, res) => {
 	const empty = ''
 	const password = req.body.password
 
-	sequelize.query("SELECT idpanier, iduser, password, username FROM users, panier WHERE iduser = id_user AND email = '" + email + "'")
+	sequelize.query("SELECT user_id, username, password FROM users WHERE email = '" + email + "'")
 	.then(([results, metadata]) => {
 		const user = {
 			email: req.body.email,
@@ -53,8 +53,7 @@ const login = (req, res) => {
 					return;
 				} else {
 					if (same) {
-						req.session.panierId = results[0].idpanier
-						req.session.userId = results[0].iduser
+						req.session.id_user = results[0].iduser
 						const {token, refreshToken} = generateToken(user)
 						res.json({token: token, refreshToken: refreshToken})
 						return;
@@ -80,7 +79,7 @@ const logoutTo = (req,res) => {
 }
 
 const getUser = (req, res) => {
-  sequelize.query("SELECT username FROM user WHERE iduser = " + req.session.userId)
+  sequelize.query("SELECT username FROM users WHERE user_id = " + req.session.userId)
   .then(([results, metadata]) => {
     res.json(results)
   })
