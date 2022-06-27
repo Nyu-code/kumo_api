@@ -8,7 +8,7 @@ const logger = require('morgan')
 const dotenv = require('dotenv')
 
 dotenv.config()
-dotenv.config({path: ".env.local"})
+dotenv.config({ path: ".env.local" })
 const apiRouter = require('./routes')
 
 const app = express()
@@ -23,17 +23,22 @@ app.use(cookieParser())
 app.use(cors());
 // Enhance API security
 app.use(helmet());
-app.use(session({ secret: 'grehjznejzkhgjrez', saveUninitialized: false, resave: false }))
+const oneDay = 1000 * 60 * 60 * 24;
+app.use(session({
+    secret: 'grehjznejz4268khgjrez',
+    saveUninitialized: true,
+    cookie: { maxAge: oneDay },
+    resave: false
+}));
 
-app.get('/', (req, res) => res.send('Api is working'))
-app.use('/api', apiRouter)
-
+app.get('/', (req, res) => res.send('Api is working'));
+app.use('/api', apiRouter);
 app.use((req, res, next) => {
     const error = new Error('not found')
-    return res.status(404).json({message: error.message})
-})
+    return res.status(404).json({ message: error.message })
+});
 
 const PORT = process.env.PORT ?? 3000
 app.listen(PORT, () => {
     console.log('The server is running on http://localhost:' + PORT + "/api")
-})
+});
