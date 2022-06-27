@@ -82,7 +82,8 @@ const logoutTo = (req,res) => {
 }
 
 const getUser = (req, res) => {
-  sequelize.query("SELECT username FROM users WHERE user_id = " + req.session.userId)
+	const userId = req.body.userId
+  sequelize.query("SELECT username FROM users WHERE user_id = " + userId)
   .then(([results, metadata]) => {
     res.json(results)
   })
