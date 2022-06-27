@@ -8,6 +8,7 @@ const logger = require('morgan')
 const dotenv = require('dotenv')
 
 dotenv.config()
+dotenv.config({path: ".env.local"})
 const apiRouter = require('./routes')
 
 const app = express()
