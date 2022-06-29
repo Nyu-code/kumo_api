@@ -23,7 +23,8 @@
     fetch('http://localhost:6060/api/getUser', {
         method: 'POST',
         headers: {
-            'Authorization': 'Bearer ' + public_key
+            'Content-Type': 'application/json; charset=utf-8',
+            // 'Authorization': 'Bearer ' + public_key
         },
         body: {userId: 1}
     }).then((res) => res.json())

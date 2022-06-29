@@ -6,7 +6,6 @@ const user = require('./routes/user')
 const security = require('./routes/security')
 const file = require('./routes/file')
 const multer = require('multer')
-const os = require('os')
 
 router.post("/register", user.register)
 router.post("/login", user.login)
