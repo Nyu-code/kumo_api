@@ -11,6 +11,7 @@ const generateToken = (user) => {
 }
 
 const verifyToken = (req, res, next) => {
+  
   const bearerHeader = req.headers['authorization']
   if(bearerHeader) {
     const token = bearerHeader.split(' ')[1]
@@ -18,6 +19,7 @@ const verifyToken = (req, res, next) => {
       if (err)
         return res.status(403).json({message: "Error: invalid token"})
       req.user = decoded.user
+      console.log('User token verified');
       next()
     })
   } else {
