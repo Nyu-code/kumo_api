@@ -8,9 +8,53 @@
 </head>
 <body>
     <h1>File Upload</h1>
-    <form action="http://localhost:6060/api/addFile" method="POST" enctype="multipart/form-data">
-        <input type="file", name="file">
+    <form id="file-form">
+        <input id="file-input" type="file", name="file">
         <button>Submit</button>
     </form>
 </body>
+
+<script>
+    const public_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImVtYWlsIjoiYXJ0aHVyQGdtYWlsLmNvbSIsImlkIjoxLCJ1c2VybmFtZSI6ImFydGh1ciJ9LCJpYXQiOjE2NTY0OTQxNDIsImV4cCI6MTY1NjUwMTM0Mn0.3MSlcs-3tkr2Jbx6C1cRX_pctMRYNymz0oN1k-kp3gc'
+    const form = document.getElementById('file-form');
+    const input = document.getElementById('file-input');
+    let users = []
+
+    fetch('http://localhost:6060/api/getUser', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            // 'Authorization': 'Bearer ' + public_key
+        },
+        body: {userId: 1}
+    }).then((res) => res.json())
+    .then((data) => {
+        users.push(data)
+        console.log(data)
+    }).catch((err) => {
+        console.log(err)
+    })
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const form_data = new FormData();
+        form_data.append('file', input.files[0]);
+        form_data.append('json', [{
+            user_id: 1,
+            public_key: ''
+        }])
+        fetch('http://localhost:6060/api/sendFile', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + public_key
+            },
+            body: form_data
+        }).then((res) => res.json())
+        .then((data) => {
+            console.log(data);
+        }).catch((err) => {
+            console.log(err);
+        });
+    });
+</script>
 </html>

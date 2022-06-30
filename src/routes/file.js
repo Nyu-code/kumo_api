@@ -1,58 +1,86 @@
-const uuid = require('uuid').v4
 const openpgp = require('openpgp')
 const fs = require('fs')
+const sequelize = require('../database')
 
-const addFile = (req, res) => {
-  const title = req.body.title
+const sendFile = async (req, res) => {
   const file = req.file
   if (!file)
-    return res.status(400).json("Error: no file submited")
-
+    return res.status(400).json({message: "Error: no file submited"})
+  let data
+  try {
+    data = JSON.parse(req.body.users);
+  } catch (err) {
+    return res.status(400).json({message: "Error: users not in JSON format"})
+  }
+  if (!Array.isArray(data) || data.length === 0)
+    return res.status(400).json({message: "Error: no user to send to specified"})
+  const users = data.filter((user) => typeof user === "number")
+  file.enc_path = `../users/${req.user.username}/`
   console.log(file)
-  pgp_key_gen(file)
+  await pgp_key_gen(file)
+  encrypt_file(file)
+  await db_add_file(file, req.user)
+  const [users_info, metadata] = await sequelize.query("SELECT user_id, public_key FROM users WHERE user_id IN(:ids)", {
+    replacements: {ids: users}
+  })
+  for (let user of users_info)
+    encrypt_key_user(user, file)
   return res.status(200).json({message: 'File successfully uploaded'})
-  
 }
 
-async function pgp_key_gen(file){
-
+const pgp_key_gen = async (file) => {
   const pgp_config = {
     type: 'rsa',
     rsaBits: 2048, // RSA key size (defaults to 4096 bits)
-    userIDs: [{ name: file.filename, email: file.filename + "@efrei.net" }], // you can pass multiple user IDs
+    userIDs: [{ name: file.filename }], // you can pass multiple user IDs
   }
-  const {privateKey, publicKey} = await openpgp.generateKey(pgp_config)
-    encrypt_key(publicKey, file)
-    return publicKey
-  }
-
-
-async function encrypt_key(publicKey, file){
-  const openpgpPublicKey = await openpgp.readKey({ armoredKey: publicKey})
-  const fileRead = fs.readFileSync('uploads/' + file.filename)
-  const fileForPgp = new Uint8Array(fileRead)
-  
-  const options = {
-    message: await openpgp.createMessage({binary: fileForPgp}),
-    encryptionKeys: openpgpPublicKey,
-    //format: 'binary'
-  }
-  const encrypt_rep = await openpgp.encrypt(options)
-  //const encryptedFile = encrypt_rep.message.packets.write();
-  fs.writeFileSync('uploads/' + "enc_" + file.filename, encrypt_rep)
-  fs.unlinkSync('uploads/' + file.filename)
-  /*
-  const openpgpPrivateKey = await openpgp.readKey({ armoredKey: privateKey})
-  const fileReadPr = fs.readFileSync('uploads/' + file.originalname)
-  const fileForPgpPr = new Uint8Array(fileRead)
-  const optionspr = {
-    decryptionKeys: openpgpPrivateKey,
-    message: openpgp.readMessage(fileForPgpPr)
-  }
-  const decryptionResponse = await openpgp.decrypt(options)
-  const decryptedFile = decryptionResponse.data
-  fs.writeFileSync('uploads/' + file.originalname + "_denc", decryptedFile)
-  */
+  const {publicKey, privateKey} = await openpgp.generateKey(pgp_config)
+  file.publicKey = publicKey
+  file.privateKey = privateKey
 }
 
-module.exports = {addFile}
+const encrypt_file = async (file) => {
+  const openpgpPublicKey = await openpgp.readKey({ armoredKey: file.publicKey})
+  const fileRead = fs.readFileSync(file.path)
+  const fileForPgp = new Uint8Array(fileRead)
+  
+  return new Promise(async (resolve, reject) => {
+    const options = {
+      message: await openpgp.createMessage({binary: fileForPgp}),
+      encryptionKeys: openpgpPublicKey,
+    }
+    const encrypt_rep = await openpgp.encrypt(options)
+    if (!fs.existsSync(file.enc_path)) fs.mkdirSync(file.enc_path)
+    fs.writeFileSync(file.enc_path + file.filename, encrypt_rep)
+    fs.unlinkSync(file.path)
+    resolve(true);
+  })
+}
+
+const db_add_file = async (file, user) => {
+  let [results, metadata] = await sequelize.query("SELECT public_key FROM users WHERE user_id = ?", {replacements: [user.id]})
+  const openpgpPublicKey = await openpgp.readKey({ armoredKey: results[0].public_key})
+  const options = {
+    message: await openpgp.createMessage({text: file.privateKey}),
+    encryptionKeys: openpgpPublicKey
+  }
+  const enc_private_key = await openpgp.encrypt(options);
+  res = await sequelize.query("INSERT INTO files (filename, ref, sender_id, send_at, file_pb_key, file_pv_key, comment) VALUES (?, ?, ?, ?, ?, ?, ?)", {
+    replacements: [file.originalname, file.enc_path, user.id, new Date(), file.publicKey, enc_private_key, "Rien pour l'instant"]
+  });
+  file.id = res[0]
+}
+
+const encrypt_key_user = async (user, file) => {
+  const openpgpPublicKey = await openpgp.readKey({ armoredKey: user.public_key})
+  const options = {
+    message: await openpgp.createMessage({text: file.privateKey}),
+    encryptionKeys: openpgpPublicKey
+  }
+  const encrypt = await openpgp.encrypt(options)
+  await sequelize.query('INSERT INTO user_file VALUES (?, ?, ?)', {
+    replacements: [file.id, user.user_id, encrypt]
+  });
+}
+
+module.exports = {sendFile}

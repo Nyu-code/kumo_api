@@ -18,6 +18,7 @@ const verifyToken = (req, res, next) => {
       if (err)
         return res.status(403).json({message: "Error: invalid token"})
       req.user = decoded.user
+      console.log('User token verified');
       next()
     })
   } else {
