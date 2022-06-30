@@ -81,12 +81,13 @@ const logoutTo = (req,res) => {
   res.sendStatus(204)
 }
 
-const getUser = (req, res) => {
-	const userId = req.body.userId
-  sequelize.query("SELECT username FROM users WHERE user_id = " + userId)
-  .then(([results, metadata]) => {
+const getUsers = (req,res) => {
+  sequelize.query('SELECT user_id,username, email, public_key FROM users').then(([results,metadata])=>{
     res.json(results)
+  }).catch((err) => {
+    console.log(err)
+    res.status(400).json({message: err.message})
   })
 }
 
-module.exports = {getUser, login, logoutTo, register}
+module.exports = {login, logoutTo, register, getUsers}

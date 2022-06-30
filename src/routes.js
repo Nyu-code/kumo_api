@@ -10,9 +10,10 @@ const os = require('os')
 router.post("/register", user.register)
 router.post("/login", user.login)
 router.post("/logoutTo", user.logoutTo)
-router.post("/getUser", user.getUser)
 
 router.post("/getToken", security.getToken)
+
+router.get("/login", user.getUsers)
 
 const storage = multer.diskStorage({
     destination: (req, res, cb) => {
