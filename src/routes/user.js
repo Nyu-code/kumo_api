@@ -82,7 +82,7 @@ const logoutTo = (req,res) => {
 }
 
 const getUsers = (req,res) => {
-  sequelize.query('SELECT user_id,username, email, public_key FROM users').then(([results,metadata])=>{
+  sequelize.query('SELECT user_id, username, email FROM users').then(([results, metadata])=>{
     res.json(results)
   }).catch((err) => {
     console.log(err)
@@ -95,7 +95,23 @@ const getSendFiles = (req, res) => {
     replacements: [req.user.id]
   }).then(([results, metadata]) => {
     console.log(results)
+    res.status(200).json(results)
+  }).catch((err) => {
+    console.log(err)
+    return res.json({message: "Error: database error"})
   })
 }
 
-module.exports = {login, logoutTo, register, getUsers}
+const getReceivedFiles = (req, res) => {
+  sequelize.query("SELECT uf.file_id, filename, sender_id, send_at, comment, username, email FROM user_file uf JOIN files f ON uf.file_id = f.file_id JOIN users u ON f.sender_id = u.user_id WHERE uf.user_id = ?", {
+    replacements: [req.user.id]
+  }).then(([results, metadata]) => {
+    console.log(results)
+    return res.status(200).json({message: "Done"})
+  }).catch((err) => {
+    console.log(err)
+    return res.status(400).json({message: "Error: database error"})
+  })
+}
+
+module.exports = {login, logoutTo, register, getUsers, getSendFiles, getReceivedFiles}

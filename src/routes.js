@@ -13,7 +13,7 @@ router.post("/logoutTo", user.logoutTo)
 
 router.post("/getToken", security.getToken)
 
-router.get("/login", user.getUsers)
+router.get("/getUsers", user.getUsers)
 
 const storage = multer.diskStorage({
     destination: (req, res, cb) => {
@@ -26,5 +26,9 @@ const storage = multer.diskStorage({
 const upload = multer({storage})
 
 router.post("/sendFile", [security.verifyToken, upload.single('file')], file.sendFile)
+router.get("/sendFiles", security.verifyToken, user.getSendFiles)
+router.get("/receivedFiles", security.verifyToken, user.getReceivedFiles)
+
+router.post("/download/:file_id", security.verifyToken, file.download_file)
 
 module.exports = router
