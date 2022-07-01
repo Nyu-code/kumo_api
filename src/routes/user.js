@@ -90,4 +90,12 @@ const getUser = (req, res) => {
   })
 }
 
+const getSendFiles = (req, res) => {
+  sequelize.query("SELECT file_id, filename, sender_id, send_at, comment FROM files WHERE sender_id = ? ORDER BY send_at DESC", {
+    replacements: [req.user.id]
+  }).then(([results, metadata]) => {
+    console.log(results)
+  })
+}
+
 module.exports = {getUser, login, logoutTo, register}
