@@ -83,4 +83,17 @@ const encrypt_key_user = async (user, file) => {
   });
 }
 
+const decrypt_key_user = async (user, file) => {
+  const openpgpPrivateKey = await openpgp.readKey({ armoredKey: privateKey})
+  const fileReadPr = fs.readFileSync('uploads/' + file.originalname)
+  const fileForPgpPr = new Uint8Array(fileRead)
+  const optionspr = {
+    decryptionKeys: openpgpPrivateKey,
+    message: openpgp.readMessage(fileForPgpPr)
+  }
+  const decryptionResponse = await openpgp.decrypt(options)
+  const decryptedFile = decryptionResponse.data
+  fs.writeFileSync('uploads/' + file.originalname + "_denc", decryptedFile)
+}
+
 module.exports = {sendFile}
