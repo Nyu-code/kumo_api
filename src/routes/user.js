@@ -81,12 +81,12 @@ const logoutTo = (req,res) => {
   res.sendStatus(204)
 }
 
-const getUser = (req, res) => {
-  console.log(req.body);
-	const userId = req.body.userId
-  sequelize.query("SELECT user_id, public_key FROM users WHERE user_id = " + userId)
-  .then(([results, metadata]) => {
+const getUsers = (req,res) => {
+  sequelize.query('SELECT user_id,username, email, public_key FROM users').then(([results,metadata])=>{
     res.json(results)
+  }).catch((err) => {
+    console.log(err)
+    res.status(400).json({message: err.message})
   })
 }
 
@@ -98,4 +98,4 @@ const getSendFiles = (req, res) => {
   })
 }
 
-module.exports = {getUser, login, logoutTo, register}
+module.exports = {login, logoutTo, register, getUsers}

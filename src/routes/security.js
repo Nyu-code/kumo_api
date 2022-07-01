@@ -44,14 +44,4 @@ const getToken = (req,res) => {
   })
 }
 
-const checkAdmin = (req, res) => {
-  sequelize.query("SELECT isAdmin FROM user, panier WHERE iduser = " + req.session.userId)
-  .then(([results, metadata]) => {
-    res.json(results)
-  }).catch((err) => {
-    console.log(err)
-    res.status(400).json({message: err.message})
-  })
-}
-
-module.exports = {verifyToken, getToken, checkAdmin, generateToken}
+module.exports = {verifyToken, getToken, generateToken}
