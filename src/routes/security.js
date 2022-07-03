@@ -6,6 +6,16 @@ const generateToken = (user) => {
   return {token, refreshToken}
 }
 
+const validateToken = (req, res) => {
+  const token = req.body.token
+  if (!token) return res.status(403).json(false)
+  jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+    if (err)
+      return res.status(403).json(false)
+    return res.json(true)
+  })
+}
+
 const verifyToken = (req, res, next) => {
   const bearerHeader = req.headers['authorization']
   if(bearerHeader) {
@@ -40,4 +50,4 @@ const getToken = (req,res) => {
   })
 }
 
-module.exports = {verifyToken, getToken, generateToken}
+module.exports = {verifyToken, getToken, generateToken, validateToken}

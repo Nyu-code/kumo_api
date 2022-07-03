@@ -10,6 +10,7 @@ router.post("/register", user.register)
 router.post("/login", user.login)
 router.post("/logoutTo", user.logoutTo)
 router.post("/getToken", security.getToken)
+router.post("/verifyToken", security.validateToken)
 
 router.get("/getUsers", user.getUsers)
 
