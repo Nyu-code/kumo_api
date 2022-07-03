@@ -10,7 +10,6 @@ const multer = require('multer')
 router.post("/register", user.register)
 router.post("/login", user.login)
 router.post("/logoutTo", user.logoutTo)
-
 router.post("/getToken", security.getToken)
 
 router.get("/getUsers", user.getUsers)

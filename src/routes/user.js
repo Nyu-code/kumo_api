@@ -13,12 +13,14 @@ const register = (req, res) => {
     email: req.body.email,
     password: req.body.password,
   }
+  
   const pgp_config = {
     type: 'rsa',
     rsaBits: 2048, // RSA key size (defaults to 4096 bits)
     userIDs: [{ name: user.username, email: user.email }], // you can pass multiple user IDs
     passphrase: user.password // protects the private key
   }
+  
   sequelize.query("SELECT user_id FROM users WHERE email = ?", {replacements: [user.email]}).then(([results, metadata]) => {
     if (results.length != 0)
       return res.status(400).json({message: "Error, this email address is already used"})
