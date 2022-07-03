@@ -4,3 +4,4 @@ bin/
 uploads/
 *.local
 yarn.lock
+tmp
