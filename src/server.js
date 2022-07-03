@@ -32,13 +32,13 @@ app.use(session({
 }));
 
 app.get('/', (req, res) => res.send('Api is working'));
-app.use('/api', apiRouter);
+app.use('/api', apiRouter)
 app.use((req, res, next) => {
     const error = new Error('not found')
     return res.status(404).json({ message: error.message })
-});
+})
 
 const PORT = process.env.PORT ?? 3000
 app.listen(PORT, () => {
     console.log('The server is running on http://localhost:' + PORT + "/api")
-});
+})

@@ -1,9 +1,5 @@
 const jwt = require('jsonwebtoken')
 
-const sequelize = require('../database')
-
-let refreshTokens = []
-
 const generateToken = (user) => {
   const token = jwt.sign({user: user}, process.env.TOKEN_SECRET, {expiresIn: process.env.TOKEN_EXPIRE_TIME})
   const refreshToken = jwt.sign(user, process.env.TOKEN_SECRET)

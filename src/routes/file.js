@@ -1,7 +1,9 @@
 const openpgp = require('openpgp')
 const bcrypt = require('bcrypt')
 const fs = require('fs')
-const sequelize = require('../database')
+const sequelize = require('../utils/database')
+const path = require('path')
+const uuid = require('uuid').v4
 
 const download_file = async (req, res) => {
   try {
@@ -16,12 +18,25 @@ const download_file = async (req, res) => {
       return res.status(404).json({message: 'Error: file not found'})
     const enc_file = fileResult[0]
     const file_private_key = await decrypt_file_key(enc_file.enc_private_key, userResult[0].private_key, req.body.password)
-    console.log(file_private_key)
-    return res.status(200).json({message: "Done"})
+    const file_stream = await decrypt_file(enc_file, file_private_key)
+    res.attachment(enc_file.filename)
+    file_stream.pipe(res)
   } catch(err) {
     console.log(err)
     return res.status(400).json({message: err.message})
   }
+}
+
+const decrypt_file = async (file_info, private_key_armored) => {
+  const privateKey = await openpgp.readPrivateKey({ armoredKey: private_key_armored })
+  const in_stream = fs.createReadStream(file_info.ref, 'utf-8')
+
+  const message = await openpgp.readMessage({ armoredMessage: in_stream })
+  const decrypted = await openpgp.decrypt({
+    message,
+    decryptionKeys: privateKey
+  })
+  return decrypted.data
 }
 
 const decrypt_file_key = async (enc_key, armored_private_key, passphrase) => {
@@ -29,43 +44,38 @@ const decrypt_file_key = async (enc_key, armored_private_key, passphrase) => {
     privateKey: await openpgp.readPrivateKey({ armoredKey: armored_private_key }),
     passphrase
   })
-
-  const message = await openpgp.readMessage({
-    armoredMessage: enc_key
-  })
-
-  const { data: decrypted } = await openpgp.decrypt({
+  const message = await openpgp.readMessage({ armoredMessage: enc_key })
+  const decrypted = await openpgp.decrypt({
     message,
     decryptionKeys: privateKey
   })
-
-  return decrypted
+  return decrypted.data
 }
 
 const sendFile = async (req, res) => {
-  const file = req.file
-  if (!file)
-    return res.status(400).json({message: "Error: no file submited"})
-  let data
   try {
-    data = JSON.parse(req.body.users);
+    const file = req.file
+    if (!file)
+      return res.status(400).json({message: "Error: no file submited"})
+    const data = JSON.parse(req.body.users)
+    if (!Array.isArray(data) || data.length === 0)
+      return res.status(400).json({message: "Error: no destination user specified"})
+    const users = data.filter((user) => typeof user === "number")
+    file.enc_path = path.join(__dirname, "../../../users/" + req.user.username)
+    await pgp_key_gen(file)
+    encrypt_file(file)
+    await db_add_file(file, req.user)
+    const [users_info, metadata] = await sequelize.query("SELECT user_id, public_key FROM users WHERE user_id IN(:ids)", {
+      replacements: {ids: users}
+    })
+    for (let user of users_info)
+      encrypt_key_user(user, file)
+    return res.status(200).json({message: 'File successfully uploaded'})
   } catch (err) {
-    return res.status(400).json({message: "Error: users not in JSON format"})
+    console.log(err)
+    return res.status(500).json({message: err.message})
   }
-  if (!Array.isArray(data) || data.length === 0)
-    return res.status(400).json({message: "Error: no user to send to specified"})
-  const users = data.filter((user) => typeof user === "number")
-  file.enc_path = `../users/${req.user.username}/`
-  console.log(file)
-  await pgp_key_gen(file)
-  encrypt_file(file)
-  await db_add_file(file, req.user)
-  const [users_info, metadata] = await sequelize.query("SELECT user_id, public_key FROM users WHERE user_id IN(:ids)", {
-    replacements: {ids: users}
-  })
-  for (let user of users_info)
-    encrypt_key_user(user, file)
-  return res.status(200).json({message: 'File successfully uploaded'})
+  
 }
 
 const pgp_key_gen = async (file) => {
@@ -81,20 +91,19 @@ const pgp_key_gen = async (file) => {
 
 const encrypt_file = async (file) => {
   const openpgpPublicKey = await openpgp.readKey({ armoredKey: file.publicKey })
-  const fileRead = fs.readFileSync(file.path)
-  const fileForPgp = new Uint8Array(fileRead)
+  const in_stream = fs.createReadStream(file.path, 'utf-8')
+  const out_stream = fs.createWriteStream(path.join(file.enc_path, file.filename))
   
-  return new Promise(async (resolve, reject) => {
-    const options = {
-      message: await openpgp.createMessage({binary: fileForPgp}),
-      encryptionKeys: openpgpPublicKey,
-      config: {preferredCompressionAlgorithm: openpgp.enums.compression.zlib}
-    }
-    const encrypt_rep = await openpgp.encrypt(options)
-    if (!fs.existsSync(file.enc_path)) fs.mkdirSync(file.enc_path)
-    fs.writeFileSync(file.enc_path + file.filename, encrypt_rep)
+  const options = {
+    message: await openpgp.createMessage({ text: in_stream }),
+    encryptionKeys: openpgpPublicKey,
+    config: {preferredCompressionAlgorithm: openpgp.enums.compression.zlib},
+  }
+  const encrypt_rep = await openpgp.encrypt(options)
+  if (!fs.existsSync(file.enc_path)) fs.mkdirSync(file.enc_path)
+  encrypt_rep.pipe(out_stream)
+  encrypt_rep.on('end', () => {
     fs.unlinkSync(file.path)
-    resolve(true);
   })
 }
 
@@ -107,8 +116,8 @@ const db_add_file = async (file, user) => {
   }
   const enc_private_key = await openpgp.encrypt(options);
   res = await sequelize.query("INSERT INTO files (filename, ref, sender_id, send_at, file_pb_key, file_pv_key, comment) VALUES (?, ?, ?, ?, ?, ?, ?)", {
-    replacements: [file.originalname, file.enc_path + file.filename, user.id, new Date(), file.publicKey, enc_private_key, "Rien pour l'instant"]
-  });
+    replacements: [file.originalname, path.join(file.enc_path, file.filename), user.id, new Date(), file.publicKey, enc_private_key, "Rien pour l'instant"]
+  })
   file.id = res[0]
 }
 
@@ -121,20 +130,7 @@ const encrypt_key_user = async (user, file) => {
   const encrypt = await openpgp.encrypt(options)
   await sequelize.query('INSERT INTO user_file VALUES (?, ?, ?)', {
     replacements: [file.id, user.user_id, encrypt]
-  });
-}
-
-const decrypt_key_user = async (user, file) => {
-  const openpgpPrivateKey = await openpgp.readKey({ armoredKey: privateKey})
-  const fileReadPr = fs.readFileSync('uploads/' + file.originalname)
-  const fileForPgpPr = new Uint8Array(fileRead)
-  const optionspr = {
-    decryptionKeys: openpgpPrivateKey,
-    message: openpgp.readMessage(fileForPgpPr)
-  }
-  const decryptionResponse = await openpgp.decrypt(options)
-  const decryptedFile = decryptionResponse.data
-  fs.writeFileSync('uploads/' + file.originalname + "_denc", decryptedFile)
+  })
 }
 
 module.exports = {sendFile, download_file}

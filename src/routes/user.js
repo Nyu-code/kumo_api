@@ -1,8 +1,7 @@
 const bcrypt = require('bcrypt')
 const openpgp = require('openpgp')
-const mkdirp = require("mkdirp")
 
-const sequelize = require('../database')
+const sequelize = require('../utils/database')
 const { generateToken } = require('./security')
 
 
@@ -24,7 +23,6 @@ const register = (req, res) => {
   sequelize.query("SELECT user_id FROM users WHERE email = ?", {replacements: [user.email]}).then(([results, metadata]) => {
     if (results.length != 0)
       return res.status(400).json({message: "Error, this email address is already used"})
-    mkdirp('../rep_User/' + user.username)
     const hash = bcrypt.hashSync(user.password, saltRounds)
     openpgp.generateKey(pgp_config).then(({privateKey, publicKey}) => {
       sequelize.query("INSERT INTO users (username, email, password, public_key, private_key) VALUES (?, ?, ?, ?, ?)", {
