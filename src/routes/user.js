@@ -123,17 +123,18 @@ const getReceivedFiles = (req, res) => {
 }
 
 const deleteFile = (req, res) => {
-  const file_id = req.body.file_id
-  const user_id = req.body.user_id
-  if (!file_id || !user_id)
-    return res.status(400).json({message: 'Error: you need to provide a user and a file'})
-  sequelize.query('DELETE FROM user_file WHERE file_id = ? AND user_id = ? AND (SELECT COUNT(*) FROM files WHERE user_id = ? AND file_id = ?) = 1', {
-    replacements: [file_id, user_id, req.user.id, file_id]
-  }).then(() => {
-    return res.json({message: 'User access supressed'})
+  const file_id = req.params.file_id
+  if (!file_id)
+    return res.status(400).json({message: 'Error: you need to provide a valid file id'})
+  sequelize.query('DELETE FROM files WHERE file_id = ? AND sender_id = ?', {
+    replacements: [file_id, req.user.id]
+  }).then(([results, metadata]) => {
+    if (results.affectedRows === 0)
+      return res.status(404).json({message: 'Error: this file does not exists or does not belong to you'})
+    return res.json({message: 'File deleted'})
   }).catch((err) => {
     console.log(err)
-    return res.status(400).json('Error: database error')
+    return res.status(400).json({message: 'Error: database error'})
   })
 }
 
@@ -142,14 +143,14 @@ const deleteUserAccess = (req, res) => {
   const user_id = req.body.user_id
   if (!file_id || !user_id)
     return res.status(400).json({message: 'Error: you need to provide a user and a file'})
-  sequelize.query('DELETE FROM user_file WHERE file_id = ? AND user_id = ? AND (SELECT COUNT(*) FROM files WHERE user_id = ? AND file_id = ?) = 1', {
+  sequelize.query('DELETE FROM user_file WHERE file_id = ? AND user_id = ? AND (SELECT COUNT(*) FROM files WHERE sender_id = ? AND file_id = ?) = 1', {
     replacements: [file_id, user_id, req.user.id, file_id]
-  }).then(() => {
+  }).then(([results, metadata]) => {
     return res.json({message: 'User access supressed'})
   }).catch((err) => {
     console.log(err)
-    return res.status(400).json('Error: database error')
+    return res.status(400).json({message :'Error: database error'})
   })
 }
 
-module.exports = {login, logoutTo, register, getUsers, getSendFiles, getReceivedFiles, deleteUserAccess}
+module.exports = {login, logoutTo, register, getUsers, getSendFiles, getReceivedFiles, deleteFile, deleteUserAccess}
