@@ -122,4 +122,17 @@ const getReceivedFiles = (req, res) => {
   })
 }
 
-module.exports = {login, logoutTo, register, getUsers, getSendFiles, getReceivedFiles}
+const deleteFile = (req, res) => {
+  const file_id = req.body.file_id
+  const user_id = req.body.user_id
+  sequelize.query("SELECT uf.file_id, filename, sender_id, send_at, comment, username, email FROM user_file uf JOIN files f ON uf.file_id = f.file_id JOIN users u ON f.sender_id = u.user_id WHERE uf.user_id = ?", {
+    replacements: [user_id]
+  }).then(([results, metadata]) => {
+    sequelize.query("DELETE FROM user_file WHERE file_id = " + file_id + "AND user_id = "+ user_id+";")
+  }).catch((err) => {
+    console.log(err)
+    return res.status(400).json({message: "Error: database error"})
+  })
+}
+
+module.exports = {login, logoutTo, register, getUsers, getSendFiles, getReceivedFiles, deleteFile}
