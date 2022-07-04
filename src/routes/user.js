@@ -91,11 +91,20 @@ const getUsers = (req,res) => {
 }
 
 const getSendFiles = (req, res) => {
-  sequelize.query("SELECT file_id, filename, sender_id, send_at, comment FROM files WHERE sender_id = ? ORDER BY send_at DESC", {
+  sequelize.query("SELECT file_id, filename, send_at, comment FROM files WHERE sender_id = ? ORDER BY send_at DESC", {
     replacements: [req.user.id]
-  }).then(([results, metadata]) => {
-    console.log(results)
-    res.status(200).json(results)
+  }).then(([files_results, files_meta]) => {
+    const files_id = files_results.map((file_info) => {
+      return file_info.file_id
+    })
+    sequelize.query("SELECT uf.user_id, username, email, file_id FROM user_file uf JOIN users u ON uf.user_id = u.user_id WHERE uf.file_id IN(?)", {
+      replacements: [files_id]
+    }).then(([users_results, users_meta]) => {
+      for (let file of files_results) {
+        file.send_to = users_results.filter((user) => user.file_id === file.file_id)
+      }
+      res.status(200).json(files_results)
+    })
   }).catch((err) => {
     console.log(err)
     return res.json({message: "Error: database error"})
@@ -106,8 +115,7 @@ const getReceivedFiles = (req, res) => {
   sequelize.query("SELECT uf.file_id, filename, sender_id, send_at, comment, username, email FROM user_file uf JOIN files f ON uf.file_id = f.file_id JOIN users u ON f.sender_id = u.user_id WHERE uf.user_id = ?", {
     replacements: [req.user.id]
   }).then(([results, metadata]) => {
-    console.log(results)
-    return res.status(200).json({message: "Done"})
+    return res.status(200).json(results)
   }).catch((err) => {
     console.log(err)
     return res.status(400).json({message: "Error: database error"})
