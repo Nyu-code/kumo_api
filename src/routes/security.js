@@ -8,11 +8,11 @@ const generateToken = (user) => {
 
 const validateToken = (req, res) => {
   const token = req.body.token
-  if (!token) return res.status(403).json(false)
+  if (!token) return res.status(403).json({message: "Error: you need to provide a token in the body"})
   jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
     if (err)
-      return res.status(403).json(false)
-    return res.json(true)
+      return res.status(403).json({message: "Error: Invalid token"})
+    return res.json(decoded.user)
   })
 }
 
