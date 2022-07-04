@@ -11,12 +11,12 @@ router.post("/login", user.login)
 // router.post("/logoutTo", user.logoutTo)
 router.post("/getToken", security.getToken)
 router.post("/verifyToken", security.validateToken)
-router.post("/deleteFile", security.verifyToken, user.deleteFile)
+router.post("/deleteFile", security.verifyToken, user.deleteUserAccess)
 router.post("/download/:file_id", security.verifyToken, file.download_file)
 router.post("/sendFile", security.verifyToken, multer_config.single('file'), file.sendFile)
 
 router.get("/getUsers", user.getUsers)
-router.get("/sendFiles", security.verifyToken, user.getSendFiles)
+router.get("/getSendHistorical", security.verifyToken, user.getSendFiles)
 router.get("/receivedFiles", security.verifyToken, user.getReceivedFiles)
 
 module.exports = router

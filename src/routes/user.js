@@ -97,7 +97,7 @@ const getSendFiles = (req, res) => {
     const files_id = files_results.map((file_info) => {
       return file_info.file_id
     })
-    sequelize.query("SELECT uf.user_id, username, email, file_id FROM user_file uf JOIN users u ON uf.user_id = u.user_id WHERE uf.file_id IN(?)", {
+    sequelize.query("SELECT uf.user_id, username, email, file_id, filename FROM user_file uf JOIN users u ON uf.user_id = u.user_id WHERE uf.file_id IN(?)", {
       replacements: [files_id]
     }).then(([users_results, users_meta]) => {
       for (let file of files_results) {
@@ -152,4 +152,4 @@ const deleteUserAccess = (req, res) => {
   })
 }
 
-module.exports = {login, logoutTo, register, getUsers, getSendFiles, getReceivedFiles, deleteFile}
+module.exports = {login, logoutTo, register, getUsers, getSendFiles, getReceivedFiles, deleteUserAccess}
