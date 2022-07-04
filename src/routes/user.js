@@ -146,6 +146,8 @@ const deleteUserAccess = (req, res) => {
   sequelize.query('DELETE FROM user_file WHERE file_id = ? AND user_id = ? AND (SELECT COUNT(*) FROM files WHERE sender_id = ? AND file_id = ?) = 1', {
     replacements: [file_id, user_id, req.user.id, file_id]
   }).then(([results, metadata]) => {
+    if (results.affectedRows === 0)
+      return res.status(404).json({message: "Error: the user does not exists or he doesn't have access to this file"})
     return res.json({message: 'User access supressed'})
   }).catch((err) => {
     console.log(err)
