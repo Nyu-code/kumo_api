@@ -107,7 +107,7 @@ const getReceivedFiles = (req, res) => {
     replacements: [req.user.id]
   }).then(([results, metadata]) => {
     console.log(results)
-    return res.status(200).json({message: "Done"})
+    return res.status(200).json(results,{message: "Done"})
   }).catch((err) => {
     console.log(err)
     return res.status(400).json({message: "Error: database error"})
