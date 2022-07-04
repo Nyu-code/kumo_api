@@ -125,13 +125,30 @@ const getReceivedFiles = (req, res) => {
 const deleteFile = (req, res) => {
   const file_id = req.body.file_id
   const user_id = req.body.user_id
-  sequelize.query("SELECT uf.file_id, filename, sender_id, send_at, comment, username, email FROM user_file uf JOIN files f ON uf.file_id = f.file_id JOIN users u ON f.sender_id = u.user_id WHERE uf.user_id = ?", {
-    replacements: [user_id]
-  }).then(([results, metadata]) => {
-    sequelize.query("DELETE FROM user_file WHERE file_id = " + file_id + "AND user_id = "+ user_id+";")
+  if (!file_id || !user_id)
+    return res.status(400).json({message: 'Error: you need to provide a user and a file'})
+  sequelize.query('DELETE FROM user_file WHERE file_id = ? AND user_id = ? AND (SELECT COUNT(*) FROM files WHERE user_id = ? AND file_id = ?) = 1', {
+    replacements: [file_id, user_id, req.user.id, file_id]
+  }).then(() => {
+    return res.json({message: 'User access supressed'})
   }).catch((err) => {
     console.log(err)
-    return res.status(400).json({message: "Error: database error"})
+    return res.status(400).json('Error: database error')
+  })
+}
+
+const deleteUserAccess = (req, res) => {
+  const file_id = req.body.file_id
+  const user_id = req.body.user_id
+  if (!file_id || !user_id)
+    return res.status(400).json({message: 'Error: you need to provide a user and a file'})
+  sequelize.query('DELETE FROM user_file WHERE file_id = ? AND user_id = ? AND (SELECT COUNT(*) FROM files WHERE user_id = ? AND file_id = ?) = 1', {
+    replacements: [file_id, user_id, req.user.id, file_id]
+  }).then(() => {
+    return res.json({message: 'User access supressed'})
+  }).catch((err) => {
+    console.log(err)
+    return res.status(400).json('Error: database error')
   })
 }
 
