@@ -94,6 +94,8 @@ const getSendFiles = (req, res) => {
   sequelize.query("SELECT file_id, filename, send_at, comment FROM files WHERE sender_id = ? ORDER BY send_at DESC", {
     replacements: [req.user.id]
   }).then(([files_results, files_meta]) => {
+    if (files_results.length === 0)
+      return res.json([])
     const files_id = files_results.map((file_info) => {
       return file_info.file_id
     })
