@@ -29,7 +29,6 @@ const download_file = async (req, res) => {
     if (fileResult.length === 0) 
       return res.status(404).json({message: 'Error: file not found'})
     const enc_file = fileResult[0]
-    console.log(enc_file);
     const file_private_key = await decrypt_file_key(enc_file.enc_private_key, userResult[0].private_key, req.body.password)
     const file_path = await decrypt_file(enc_file, file_private_key)
     res.json({message: base64encode(file_path)})
@@ -107,7 +106,6 @@ const pgp_key_gen = async (file) => {
   const {publicKey, privateKey} = await openpgp.generateKey(pgp_config)
   file.publicKey = publicKey
   file.privateKey = privateKey
-  console.log(file.privateKey)
 }
 
 const encrypt_file = async (file) => {
