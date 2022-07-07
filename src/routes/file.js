@@ -107,6 +107,7 @@ const pgp_key_gen = async (file) => {
   const {publicKey, privateKey} = await openpgp.generateKey(pgp_config)
   file.publicKey = publicKey
   file.privateKey = privateKey
+  console.log(file.privateKey)
 }
 
 const encrypt_file = async (file) => {
