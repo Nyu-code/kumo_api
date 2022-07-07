@@ -17,6 +17,7 @@ router.delete("/deleteFile/:file_id", security.verifyToken, user.deleteFile)
 router.post("/removeUserAccess", security.verifyToken, user.deleteUserAccess)
 router.post("/download/:file_id", security.verifyToken, file.download_file)
 router.post("/sendFile", security.verifyToken, multer_config.single('file'), file.sendFile)
+router.get("/downloadFile/:file", file.send_file)
 
 router.get("/getUsers", user.getUsers)
 router.get("/getSendHistorical", security.verifyToken, user.getSendFiles)

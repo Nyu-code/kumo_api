@@ -60,7 +60,6 @@ const login = (req, res) => {
             const {token, refreshToken} = generateToken(user)
             user.token = token
             user.refreshToken = refreshToken
-            req.session.user = user
             return res.status(200).json(user)
           } else {
             return res.status(400).json({message: "Error: invalid credentials"})

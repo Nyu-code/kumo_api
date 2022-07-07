@@ -3,7 +3,19 @@ const bcrypt = require('bcrypt')
 const fs = require('fs')
 const sequelize = require('../utils/database')
 const path = require('path')
-const uuid = require('uuid').v4
+const { base64encode, base64decode } = require('nodejs-base64')
+
+const send_file = (req, res) => {
+  if (!req.params.file || req.params.file === "")
+    return res.status(404).json({ message: "Error: file not found" })
+  const file = base64decode(req.params.file)
+  if (!fs.existsSync(file))
+    return res.status(404).json({ message: "Error: file not found" })
+  res.download(file,  (err) => {
+    if (err) console.log(err)
+    fs.unlinkSync(file)
+  })
+}
 
 const download_file = async (req, res) => {
   try {
@@ -17,10 +29,10 @@ const download_file = async (req, res) => {
     if (fileResult.length === 0) 
       return res.status(404).json({message: 'Error: file not found'})
     const enc_file = fileResult[0]
+    console.log(enc_file);
     const file_private_key = await decrypt_file_key(enc_file.enc_private_key, userResult[0].private_key, req.body.password)
-    const file_stream = await decrypt_file(enc_file, file_private_key)
-    res.attachment(enc_file.filename)
-    file_stream.pipe(res)
+    const file_path = await decrypt_file(enc_file, file_private_key)
+    res.json({message: base64encode(file_path)})
   } catch(err) {
     console.log(err)
     return res.status(400).json({message: err.message})
@@ -28,15 +40,18 @@ const download_file = async (req, res) => {
 }
 
 const decrypt_file = async (file_info, private_key_armored) => {
-  const privateKey = await openpgp.readPrivateKey({ armoredKey: private_key_armored })
-  const in_stream = fs.createReadStream(file_info.ref, 'utf-8')
-
+  const openpgpPrivateKey = await openpgp.readPrivateKey({ armoredKey: private_key_armored })
+  const in_stream = fs.readFileSync(file_info.ref, 'utf-8')
+  
   const message = await openpgp.readMessage({ armoredMessage: in_stream })
   const decrypted = await openpgp.decrypt({
     message,
-    decryptionKeys: privateKey
+    format: "binary",
+    decryptionKeys: [openpgpPrivateKey]
   })
-  return decrypted.data
+  const out_path = path.join(__dirname, "../../tmp/" + file_info.filename)
+  fs.writeFileSync(out_path, decrypted.data, "binary");
+  return out_path
 }
 
 const decrypt_file_key = async (enc_key, armored_private_key, passphrase) => {
@@ -81,7 +96,6 @@ const sendFile = async (req, res) => {
     console.log(err)
     return res.status(500).json({message: err.message})
   }
-  
 }
 
 const pgp_key_gen = async (file) => {
@@ -97,21 +111,17 @@ const pgp_key_gen = async (file) => {
 
 const encrypt_file = async (file) => {
   const openpgpPublicKey = await openpgp.readKey({ armoredKey: file.publicKey })
-  const in_stream = fs.createReadStream(file.path, 'utf-8')
-  const out_stream = fs.createWriteStream(path.join(file.enc_path, file.filename))
-  
+  const file_data = fs.readFileSync(file.path)
+  const out_path = path.join(file.enc_path, file.filename)
+
   const options = {
-    message: await openpgp.createMessage({ text: in_stream }),
+    message: await openpgp.createMessage({ binary: file_data }),
     encryptionKeys: openpgpPublicKey,
-    config: {preferredCompressionAlgorithm: openpgp.enums.compression.zlib},
-  }
+  };
   const encrypt_rep = await openpgp.encrypt(options)
-  if (!fs.existsSync(file.enc_path)) fs.mkdirSync(file.enc_path)
-  encrypt_rep.pipe(out_stream)
-  encrypt_rep.on('end', () => {
-    fs.unlinkSync(file.path)
-  })
-}
+  fs.writeFileSync(out_path, encrypt_rep, "utf-8")
+  fs.unlinkSync(file.path)
+};
 
 const db_add_file = async (file, user) => {
   let [results, metadata] = await sequelize.query("SELECT public_key FROM users WHERE user_id = ?", {replacements: [user.id]})
@@ -139,4 +149,4 @@ const encrypt_key_user = async (user, file) => {
   })
 }
 
-module.exports = {sendFile, download_file}
+module.exports = {sendFile, download_file, send_file}
