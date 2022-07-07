@@ -105,7 +105,7 @@ const getSendFiles = (req, res) => {
       for (let file of files_results) {
         file.send_to = users_results.filter((user) => user.file_id === file.file_id)
       }
-      res.status(200).json(files_results)
+      res.status(200).json(files_results.filter((file) => file.send_to.length > 0))
     })
   }).catch((err) => {
     console.log(err)

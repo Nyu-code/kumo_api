@@ -63,6 +63,10 @@ const sendFile = async (req, res) => {
     const users = data.filter((user) => typeof user === "number")
     if (users.length === 0)
       return res.status(400).json({message: "Error: no destination users specified"})
+    let comment = req.body.comment
+    if (!comment || comment === "")
+      comment = 'Pas de commentaire'
+    file.comment = comment
     file.enc_path = path.join(__dirname, "../../../users/" + req.user.username)
     await pgp_key_gen(file)
     encrypt_file(file)
@@ -119,7 +123,7 @@ const db_add_file = async (file, user) => {
   }
   const enc_private_key = await openpgp.encrypt(options);
   res = await sequelize.query("INSERT INTO files (filename, ref, sender_id, send_at, file_pb_key, file_pv_key, comment) VALUES (?, ?, ?, ?, ?, ?, ?)", {
-    replacements: [file.originalname, path.join(file.enc_path, file.filename), user.id, new Date(), file.publicKey, enc_private_key, "Rien pour l'instant"]
+    replacements: [file.originalname, path.join(file.enc_path, file.filename), user.id, new Date(), file.publicKey, enc_private_key, file.comment]
   })
   file.id = res[0]
 }
