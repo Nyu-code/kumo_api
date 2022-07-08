@@ -117,6 +117,7 @@ const encrypt_file = async (file) => {
     message: await openpgp.createMessage({ binary: file_data }),
     encryptionKeys: openpgpPublicKey,
   };
+  if (!fs.existsSync(file.enc_path)) fs.mkdirSync(file.enc_path)
   const encrypt_rep = await openpgp.encrypt(options)
   fs.writeFileSync(out_path, encrypt_rep, "utf-8")
   fs.unlinkSync(file.path)
