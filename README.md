@@ -1,6 +1,6 @@
 # Kumo API
 
-Une fois le repo clone il faut creer un fichier `.env.local` et y définir les varibales d'environnements suivantes: <br>
+Une fois le repo clone il faut creer un fichier `.env.local` et y définir les variables d'environnements suivantes: <br>
 `DB_USER`<br>
 `DB_PSSWD`<br>
 
